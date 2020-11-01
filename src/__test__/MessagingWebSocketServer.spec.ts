@@ -77,4 +77,23 @@ describe('MessagingWebSocketServer', function() {
                 })
             })
     })
+
+    it('should inform other clients of another client disconnecting', function(done) {
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+        ws1.once('open', function(e) {
+            const ws2 = new WebSocket('ws://user2@localhost:7655');
+            // Wait for user2 connection
+            ws2.once('open', function(data) {
+                // Skip user2 connection message
+                ws1.once('message', function(data) {
+                    // Await user2 disconnection message
+                    ws1.once('message', function(data) {
+                        expect(data).toBe("{\"type\":\"user_disconnected\",\"timestamp\":1111,\"username\":\"user2\"}");
+                        done();
+                    });
+                ws2.close()
+                });
+            });
+        });
+    });
 });

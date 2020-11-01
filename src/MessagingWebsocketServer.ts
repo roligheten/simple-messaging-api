@@ -1,7 +1,7 @@
 import { Server as HttpServer, IncomingMessage } from "http";
 import { Socket } from 'net'
 import WebSocket, { Server, Data } from "ws";
-import { buildUserConnectedPayload } from "./payload-builders";
+import { buildUserConnectedPayload, buildUserDisconnectedPayload } from "./payload-builders";
 import basicAuth from "basic-auth";
 import { Logger } from "pino";
 
@@ -66,9 +66,23 @@ class MessagingWebsocketServer {
         }
 
         this.clients[userClient.username] = userClient;
+        socket.on('close', () => this.handleDisconnected(userClient.username));
 
         this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`)
         this.sendPayloadToAll(buildUserConnectedPayload(userClient.username, Date.now()));
+    }
+
+    handleDisconnected(username: string) {
+        if (!(username in this.clients)) {
+            this.logger.error(`Disconnecting client with username ${username} that was not tracked!`);
+            return;
+        }
+
+        delete this.clients[username];
+
+        this.logger.info(`Disconnected client with username '${username}'.`)
+        
+        this.sendPayloadToAll(buildUserDisconnectedPayload(username, Date.now()));
     }
 
     close() {

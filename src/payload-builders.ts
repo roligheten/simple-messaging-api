@@ -6,6 +6,16 @@ function buildUserConnectedPayload(username: string, timestamp: number): UserCon
     }
 }
 
+function buildUserDisconnectedPayload(username: string, timestamp: number): UserDisconnectedPayload  {
+    return {
+        type: 'user_disconnected',
+        timestamp,
+        username,
+    }
+}
+
+
 export {
-    buildUserConnectedPayload
+    buildUserConnectedPayload,
+    buildUserDisconnectedPayload
 }
