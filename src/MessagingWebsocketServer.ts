@@ -1,7 +1,13 @@
 import { Server as HttpServer, IncomingMessage } from "http";
 import { Socket } from 'net'
 import WebSocket, { Server, Data } from "ws";
-import { buildUserConnectedPayload, buildUserDisconnectedPayload } from "./payload-builders";
+import {
+    buildUserConnectedPayload,
+    buildUserDisconnectedPayload,
+    buildMessageSentPayload,
+    buildErrorReplyPayload,
+    buildSuccessReplyPayload
+} from "./payload-builders";
 import basicAuth from "basic-auth";
 import { Logger } from "pino";
 
@@ -46,8 +52,8 @@ class MessagingWebsocketServer {
             socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
             socket.destroy();
 
-            this.logger.warn(`Client was rejected for logging on with
-                already active user '${username}' connected from IP ${request.ip}.`);
+            this.logger.warn(`Client was rejected for logging on with` +
+                `already active user '${username}' connected from IP ${request.ip}.`);
             return;
         }
 
@@ -67,22 +73,65 @@ class MessagingWebsocketServer {
 
         this.clients[userClient.username] = userClient;
         socket.on('close', () => this.handleDisconnected(userClient.username));
+        socket.on('message', (data: Data) => this.handleIncomingMessage(userClient.username, data));
 
-        this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`)
         this.sendPayloadToAll(buildUserConnectedPayload(userClient.username, Date.now()));
+        this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`)
     }
 
     handleDisconnected(username: string) {
         if (!(username in this.clients)) {
-            this.logger.error(`Disconnecting client with username ${username} that was not tracked!`);
+            this.logger.error(`Disconnecting client with username ${username} that was not tracked.`);
             return;
         }
 
         delete this.clients[username];
-
-        this.logger.info(`Disconnected client with username '${username}'.`)
         
         this.sendPayloadToAll(buildUserDisconnectedPayload(username, Date.now()));
+        this.logger.info(`Disconnected client with username '${username}'.`)
+    }
+
+    handleIncomingMessage(username: string, payloadRaw: Data) {
+        if (!(username in this.clients)) {
+            this.logger.error(`Got message from username '${username}' that is not tracked.`);
+            return;
+        }
+
+        let payload: ClientPayload;
+        try {
+            payload = JSON.parse(payloadRaw as string);
+        } catch (e) {
+            this.logger.warn(`Got non-JSON payload from username '${username}', payload was ${payloadRaw}`)
+            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"))
+            return;
+        }
+
+        if (typeof payload.type === "undefined" || typeof payload.payload_id === "undefined") {
+            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"))
+            return;
+        }
+
+        switch (payload.type) {
+            case 'send_message':
+                this.handleSendMessagePayload(username, payload);
+                break;
+            default:
+                this.logger.warn(`Got unknown payload type '${payload.type}' from user '${username}'`);
+                this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"));
+                break;
+        }
+    }
+
+    handleSendMessagePayload(username: string, payload: SendMessagePayload) {
+        const { message, payload_id } = payload;
+        if (typeof message !== 'string') {
+            this.sendPayloadToUser(username, buildErrorReplyPayload(payload_id, "malformed_payload"));
+        }
+
+        this.sendPayloadToAll(buildMessageSentPayload(username, message, Date.now()));
+
+        this.sendPayloadToUser(username, buildSuccessReplyPayload(payload_id));
+        this.logger.info(`User '${username}' sent message '${message}'`)
     }
 
     close() {
@@ -92,14 +141,23 @@ class MessagingWebsocketServer {
         });
     }
 
-    sendPayloadToSocket(clientSocket: WebSocket, payload: ServerPayload) {
-        clientSocket.send(JSON.stringify(payload))
+    sendPayloadToUser(username: string, payload: ServerPayload) {
+        if (!(username in this.clients)) {
+            this.logger.error(`Tried to send payload to non-tracked user '${username}'.`);
+            return;
+        }
+        const { socket } = this.clients[username]
+        this.sendPayloadToSocket(socket, payload)
     }
 
     sendPayloadToAll(payload: ServerPayload) {
         Object.values(this.clients).forEach(client => {
             this.sendPayloadToSocket(client.socket, payload)
         });
+    }
+
+    sendPayloadToSocket(clientSocket: WebSocket, payload: ServerPayload) {
+        clientSocket.send(JSON.stringify(payload))
     }
 
     static authenticateBasic(request: IncomingMessage): string | null {

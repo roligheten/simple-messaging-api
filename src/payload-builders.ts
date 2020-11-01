@@ -14,8 +14,37 @@ function buildUserDisconnectedPayload(username: string, timestamp: number): User
     }
 }
 
+function buildMessageSentPayload(username: string, message: string, timestamp: number): MessageSentPayload  {
+    return {
+        type: 'message_sent',
+        message,
+        timestamp,
+        username,
+    }
+}
+
+function buildSuccessReplyPayload(payload_id: string): ReplyPayload {
+    return {
+        type: 'reply',
+        payload_id,
+        error: null,
+    }
+}
+
+function buildErrorReplyPayload(payload_id: string, error: ReplyErrorCode): ReplyPayload {
+    return {
+        type: 'reply',
+        payload_id,
+        error,
+    }
+}
+
+
 
 export {
     buildUserConnectedPayload,
-    buildUserDisconnectedPayload
+    buildUserDisconnectedPayload,
+    buildMessageSentPayload,
+    buildSuccessReplyPayload,
+    buildErrorReplyPayload
 }

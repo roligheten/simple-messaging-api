@@ -8,7 +8,7 @@ Date.now = jest.fn(() => 1111)
 describe('MessagingWebSocketServer', function() {
     let httpServer = undefined;
     let wsServer = undefined;
-    const logger = pino({level: 'error'});
+    const logger = pino({level: 'warn'});
 
 
     beforeEach(function(done) {
@@ -93,6 +93,101 @@ describe('MessagingWebSocketServer', function() {
                     });
                 ws2.close()
                 });
+            });
+        });
+    });
+
+    it('should send user message to all connected clients', function(done) {
+        const expectedResponseMessage = '{"type":"message_sent","message":"hello","timestamp":1111,"username":"user1"}'
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+        let ws1GotMessage = false
+        let ws2GotMessage = false
+
+        // Wait for user1 connection established
+        ws1.once('open', function(e) {
+            const ws2 = new WebSocket('ws://user2@localhost:7655');
+            // Wait for user2 connection established
+            ws2.once('open', function(e) {
+                ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\",\"message\":\"hello\"}")
+                // Wait for both clients to recieve the message
+                ws1.on('message', function(data) {
+                    if (data === expectedResponseMessage) {
+                        ws1GotMessage = true
+                        if (ws1GotMessage && ws2GotMessage) {
+                            done();
+                        }
+                    }
+                });
+                ws2.on('message', function(data) {
+                    if (data === expectedResponseMessage) {
+                        ws2GotMessage = true
+                        if (ws1GotMessage && ws2GotMessage) {
+                            done();
+                        }
+                    }
+                });
+            });
+        });
+    });
+
+    it('should send reply payload after successful send_message payload sent', function(done) {
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+
+        // Wait for user1 connection established
+        ws1.once('open', function(e) {
+            ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\",\"message\":\"hello\"}")
+            // Wait for error reply
+            ws1.on('message', function(data) {
+                if (data === '{"type":"reply","payload_id":\"1\","error":null}') {
+                    done();
+                }
+            });
+        });
+    });
+
+
+    it('should reject payload with no payload_id and send error reply', function(done) {
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+
+        // Wait for user1 connection established
+        ws1.once('open', function(e) {
+            ws1.send("{\"type\":\"send_message\",\"message\":\"1\"}")
+            // Wait for error reply
+            ws1.on('message', function(data) {
+                if (data === '{"type":"reply","payload_id":null,"error":"malformed_payload"}') {
+                    done();
+                }
+            });
+        });
+    });
+
+    it('should reject payload with invalid type and send error reply', function(done) {
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+
+        // Wait for user1 connection established
+        ws1.once('open', function(e) {
+            ws1.send("{\"type\":\"something else\"}")
+            // Wait for error reply
+            ws1.on('message', function(data) {
+                if (data === '{"type":"reply","payload_id":null,"error":"malformed_payload"}') {
+                    done();
+                }
+            });
+        });
+    });
+
+    it('should reject send_message payload with no message and send error reply', function(done) {
+        const expectedResponseMessage = '{"type":"message_sent","message":"hello","timestamp":1111,"username":"user1"}'
+        const ws1 = new WebSocket('ws://user1@localhost:7655');
+
+        // Wait for user1 connection established
+        ws1.once('open', function(e) {
+            ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\"}")
+            // Wait for error reply
+            ws1.on('message', function(data) {
+                if (data === '{"type":"reply","payload_id":\"1\","error":"malformed_payload"}') {
+                    done();
+                }
             });
         });
     });

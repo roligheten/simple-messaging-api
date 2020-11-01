@@ -17,6 +17,7 @@ A message was sent by a user.
 |------------|------------------------------------------------------------------|----------------|
 | type       | Always "message_sent".                                           | string         |
 | username   | Username of the user which sent the message or null if server.   | string \| null |
+| message    | Message that was sent                                            | string         |
 | timestamp  | Unix Timestamp when the message was posted.                      | number         |
 
 **user_connected**
@@ -44,11 +45,11 @@ A user disconnected from the server.
 
 Special payload sent to a client after it sent a payload to either acknowledge the payload was processed successfully, or that an error occured.
 
-| field name | description                                                                        | type           |
-|------------|------------------------------------------------------------------------------------|----------------|
-| type       | Always "reply".                                                                    | string         |
-| payload_id | Id corresponding to the payload_id sent by the client                              | string         |
-| error      | Error code if an error occurred processing the sent payload, or null if successful | string \| null |
+| field name | description                                                                         | type           |
+|------------|-------------------------------------------------------------------------------------|----------------|
+| type       | Always "reply".                                                                     | string         |
+| payload_id | Id corresponding to the payload_id sent by the client or null if payload_id missing | string \| null |
+| error      | Error code if an error occurred processing the sent payload, or null if successful  | string \| null |
 
 
 ## Client -> Server payloads
