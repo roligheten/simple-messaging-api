@@ -4,7 +4,7 @@ function buildUserConnectedPayload(username: string, timestamp: number): UserCon
         timestamp,
         username,
     }
-}
+};
 
 function buildUserDisconnectedPayload(username: string, timestamp: number): UserDisconnectedPayload  {
     return {
@@ -12,7 +12,7 @@ function buildUserDisconnectedPayload(username: string, timestamp: number): User
         timestamp,
         username,
     }
-}
+};
 
 function buildMessageSentPayload(username: string, message: string, timestamp: number): MessageSentPayload  {
     return {
@@ -21,7 +21,7 @@ function buildMessageSentPayload(username: string, message: string, timestamp: n
         timestamp,
         username,
     }
-}
+};
 
 function buildSuccessReplyPayload(payload_id: string): ReplyPayload {
     return {
@@ -29,7 +29,7 @@ function buildSuccessReplyPayload(payload_id: string): ReplyPayload {
         payload_id,
         error: null,
     }
-}
+};
 
 function buildErrorReplyPayload(payload_id: string, error: ReplyErrorCode): ReplyPayload {
     return {
@@ -37,7 +37,7 @@ function buildErrorReplyPayload(payload_id: string, error: ReplyErrorCode): Repl
         payload_id,
         error,
     }
-}
+};
 
 
 
@@ -47,4 +47,4 @@ export {
     buildMessageSentPayload,
     buildSuccessReplyPayload,
     buildErrorReplyPayload
-}
+};

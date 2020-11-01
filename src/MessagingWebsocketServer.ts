@@ -30,7 +30,7 @@ class MessagingWebsocketServer {
         this.logger = logger;
         this.clients = {};
 
-        this.logger.info('Starting messaging server.')
+        this.logger.info('Starting messaging server.');
         this.wsServer = new Server({ clientTracking: false, noServer: true });
 
         httpServer.on('upgrade', this.handleUpgrade.bind(this));
@@ -38,13 +38,13 @@ class MessagingWebsocketServer {
     }
 
     handleUpgrade(request: AuthenticatedMessage, socket: Socket, head: any) {
-        const username = MessagingWebsocketServer.authenticateBasic(request)
+        const username = MessagingWebsocketServer.authenticateBasic(request);
 
         if (username === null) {
             socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
             socket.destroy();
 
-            this.logger.warn(`Client tried to connect without credentials from IP ${request.ip}`)
+            this.logger.warn(`Client tried to connect without credentials from IP ${request.ip}`);
             return;
         }
 
@@ -76,7 +76,7 @@ class MessagingWebsocketServer {
         socket.on('message', (data: Data) => this.handleIncomingMessage(userClient.username, data));
 
         this.sendPayloadToAll(buildUserConnectedPayload(userClient.username, Date.now()));
-        this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`)
+        this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`);
     }
 
     handleDisconnected(username: string) {
@@ -88,7 +88,7 @@ class MessagingWebsocketServer {
         delete this.clients[username];
         
         this.sendPayloadToAll(buildUserDisconnectedPayload(username, Date.now()));
-        this.logger.info(`Disconnected client with username '${username}'.`)
+        this.logger.info(`Disconnected client with username '${username}'.`);
     }
 
     handleIncomingMessage(username: string, payloadRaw: Data) {
@@ -101,13 +101,13 @@ class MessagingWebsocketServer {
         try {
             payload = JSON.parse(payloadRaw as string);
         } catch (e) {
-            this.logger.warn(`Got non-JSON payload from username '${username}', payload was ${payloadRaw}`)
-            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"))
+            this.logger.warn(`Got non-JSON payload from username '${username}', payload was ${payloadRaw}`);
+            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"));
             return;
         }
 
         if (typeof payload.type === "undefined" || typeof payload.payload_id === "undefined") {
-            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"))
+            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"));
             return;
         }
 
@@ -131,13 +131,13 @@ class MessagingWebsocketServer {
         this.sendPayloadToAll(buildMessageSentPayload(username, message, Date.now()));
 
         this.sendPayloadToUser(username, buildSuccessReplyPayload(payload_id));
-        this.logger.info(`User '${username}' sent message '${message}'`)
+        this.logger.info(`User '${username}' sent message '${message}'`);
     }
 
     close() {
         this.logger.info('Shutting down messaging server.')
         Object.values(this.clients).forEach(client => {
-            client.socket.terminate()
+            client.socket.terminate();
         });
     }
 
@@ -146,18 +146,18 @@ class MessagingWebsocketServer {
             this.logger.error(`Tried to send payload to non-tracked user '${username}'.`);
             return;
         }
-        const { socket } = this.clients[username]
-        this.sendPayloadToSocket(socket, payload)
+        const { socket } = this.clients[username];
+        this.sendPayloadToSocket(socket, payload);
     }
 
     sendPayloadToAll(payload: ServerPayload) {
         Object.values(this.clients).forEach(client => {
-            this.sendPayloadToSocket(client.socket, payload)
+            this.sendPayloadToSocket(client.socket, payload);
         });
     }
 
     sendPayloadToSocket(clientSocket: WebSocket, payload: ServerPayload) {
-        clientSocket.send(JSON.stringify(payload))
+        clientSocket.send(JSON.stringify(payload));
     }
 
     static authenticateBasic(request: IncomingMessage): string | null {
@@ -167,7 +167,7 @@ class MessagingWebsocketServer {
             return null;
         }
 
-        return credentials.name
+        return credentials.name;
     }
 }
 
