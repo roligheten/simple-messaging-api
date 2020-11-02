@@ -8,5 +8,13 @@ const server = createServer();
 
 const messagingServer = new MessagingWebSocketServer(server, logger);
 
-logger.info('Starting HTTP server on port 8080');
-server.listen(8080);
+
+process.on('SIGTERM', () => {
+    logger.info('Got SIGTERM.');
+    server.close();
+    messagingServer.close();
+});
+
+logger.info('Starting HTTP server on port 8081');
+
+server.listen(8081);

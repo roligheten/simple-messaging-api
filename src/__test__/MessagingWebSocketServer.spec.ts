@@ -3,6 +3,7 @@ import MessagingWebsocketServer from '../MessagingWebsocketServer';
 import WebSocket from 'ws'
 import pino from 'pino';
 
+// Mock Date.now for consistent timestamp generation
 Date.now = jest.fn(() => 1111)
 
 describe('MessagingWebSocketServer', function() {
@@ -28,8 +29,8 @@ describe('MessagingWebSocketServer', function() {
 
 
     it('should send user_connected payload to all connected clients on new connection', function(done) {
-        const user1ConnectPayload = "{\"type\":\"user_connected\",\"timestamp\":1111,\"username\":\"user1\"}"
-        const user2ConnectPayload = "{\"type\":\"user_connected\",\"timestamp\":1111,\"username\":\"user2\"}"
+        const user1ConnectPayload = '{"type":"user_connected","timestamp":1111,"username":"user1"}'
+        const user2ConnectPayload = '{"type":"user_connected","timestamp":1111,"username":"user2"}'
         
         const ws1 = new WebSocket('ws://user1@localhost:7655');
 
@@ -61,6 +62,7 @@ describe('MessagingWebSocketServer', function() {
 
     it('should not accept connections missing credentials', function(done) {
         const ws = new WebSocket('ws://localhost:7655');
+            // Handle error response from server
             ws.on('error', function(e) {
                 expect(e.message).toBe('Unexpected server response: 401')
                 done();
@@ -69,13 +71,15 @@ describe('MessagingWebSocketServer', function() {
 
     it('should not accept connection if someone is already connected with same user', function(done) {
         const ws1 = new WebSocket('ws://user1@localhost:7655');
-            ws1.once('open', function(e) {
-                const ws2 = new WebSocket('ws://user1@localhost:7655');
-                ws2.on('error', function(e) {
-                    expect(e.message).toBe('Unexpected server response: 403')
-                    done();
-                })
+        // Wait for user1 connection
+        ws1.once('open', function(e) {
+            const ws2 = new WebSocket('ws://user1@localhost:7655');
+            // Handle error response from server
+            ws2.on('error', function(e) {
+                expect(e.message).toBe('Unexpected server response: 403')
+                done();
             })
+        })
     })
 
     it('should inform other clients of another client disconnecting', function(done) {
@@ -88,7 +92,7 @@ describe('MessagingWebSocketServer', function() {
                 ws1.once('message', function(data) {
                     // Await user2 disconnection message
                     ws1.once('message', function(data) {
-                        expect(data).toBe("{\"type\":\"user_disconnected\",\"timestamp\":1111,\"username\":\"user2\"}");
+                        expect(data).toBe('{"type":"user_disconnected","timestamp":1111,"username":"user2"}');
                         done();
                     });
                 ws2.close()
@@ -108,7 +112,7 @@ describe('MessagingWebSocketServer', function() {
             const ws2 = new WebSocket('ws://user2@localhost:7655');
             // Wait for user2 connection established
             ws2.once('open', function(e) {
-                ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\",\"message\":\"hello\"}")
+                ws1.send('{"type":"send_message","payload_id":"1","message":"hello"}')
                 // Wait for both clients to recieve the message
                 ws1.on('message', function(data) {
                     if (data === expectedResponseMessage) {
@@ -135,10 +139,10 @@ describe('MessagingWebSocketServer', function() {
 
         // Wait for user1 connection established
         ws1.once('open', function(e) {
-            ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\",\"message\":\"hello\"}")
-            // Wait for error reply
+            ws1.send('{"type":"send_message","payload_id":"1","message":"hello"}')
+            // Wait for success reply
             ws1.on('message', function(data) {
-                if (data === '{"type":"reply","payload_id":\"1\","error":null}') {
+                if (data === '{"type":"reply","payload_id":"1","error":null}') {
                     done();
                 }
             });
@@ -151,7 +155,7 @@ describe('MessagingWebSocketServer', function() {
 
         // Wait for user1 connection established
         ws1.once('open', function(e) {
-            ws1.send("{\"type\":\"send_message\",\"message\":\"1\"}")
+            ws1.send('{"type":"send_message","message":"1"}')
             // Wait for error reply
             ws1.on('message', function(data) {
                 if (data === '{"type":"reply","payload_id":null,"error":"malformed_payload"}') {
@@ -166,7 +170,7 @@ describe('MessagingWebSocketServer', function() {
 
         // Wait for user1 connection established
         ws1.once('open', function(e) {
-            ws1.send("{\"type\":\"something else\"}")
+            ws1.send('{"type":"something else"}')
             // Wait for error reply
             ws1.on('message', function(data) {
                 if (data === '{"type":"reply","payload_id":null,"error":"malformed_payload"}') {
@@ -177,15 +181,14 @@ describe('MessagingWebSocketServer', function() {
     });
 
     it('should reject send_message payload with no message and send error reply', function(done) {
-        const expectedResponseMessage = '{"type":"message_sent","message":"hello","timestamp":1111,"username":"user1"}'
         const ws1 = new WebSocket('ws://user1@localhost:7655');
 
         // Wait for user1 connection established
         ws1.once('open', function(e) {
-            ws1.send("{\"type\":\"send_message\",\"payload_id\":\"1\"}")
+            ws1.send('{"type":"send_message","payload_id":"1"}')
             // Wait for error reply
             ws1.on('message', function(data) {
-                if (data === '{"type":"reply","payload_id":\"1\","error":"malformed_payload"}') {
+                if (data === '{"type":"reply","payload_id":"1","error":"malformed_payload"}') {
                     done();
                 }
             });

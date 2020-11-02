@@ -35,6 +35,8 @@ class MessagingWebsocketServer {
 
         httpServer.on('upgrade', this.handleUpgrade.bind(this));
         this.wsServer.on('connection', this.handleConnection.bind(this));
+        this.wsServer.on('error', (err) => this.logger.error(err))
+
     }
 
     handleUpgrade(request: AuthenticatedMessage, socket: Socket, head: any) {
@@ -74,6 +76,7 @@ class MessagingWebsocketServer {
         this.clients[userClient.username] = userClient;
         socket.on('close', () => this.handleDisconnected(userClient.username));
         socket.on('message', (data: Data) => this.handleIncomingMessage(userClient.username, data));
+        socket.on('error', (err) => this.logger.error(err))
 
         this.sendPayloadToAll(buildUserConnectedPayload(userClient.username, Date.now()));
         this.logger.info(`Client with username '${userClient.username}' connected from IP ${request.ip}.`);
@@ -106,8 +109,8 @@ class MessagingWebsocketServer {
             return;
         }
 
-        if (typeof payload.type === "undefined" || typeof payload.payload_id === "undefined") {
-            this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"));
+        if (typeof payload.type === 'undefined' || typeof payload.payload_id === 'undefined') {
+            this.sendPayloadToUser(username, buildErrorReplyPayload(null, 'malformed_payload'));
             return;
         }
 
@@ -117,7 +120,7 @@ class MessagingWebsocketServer {
                 break;
             default:
                 this.logger.warn(`Got unknown payload type '${payload.type}' from user '${username}'`);
-                this.sendPayloadToUser(username, buildErrorReplyPayload(null, "malformed_payload"));
+                this.sendPayloadToUser(username, buildErrorReplyPayload(null, 'malformed_payload'));
                 break;
         }
     }
@@ -125,7 +128,7 @@ class MessagingWebsocketServer {
     handleSendMessagePayload(username: string, payload: SendMessagePayload) {
         const { message, payload_id } = payload;
         if (typeof message !== 'string') {
-            this.sendPayloadToUser(username, buildErrorReplyPayload(payload_id, "malformed_payload"));
+            this.sendPayloadToUser(username, buildErrorReplyPayload(payload_id, 'malformed_payload'));
         }
 
         this.sendPayloadToAll(buildMessageSentPayload(username, message, Date.now()));
@@ -137,7 +140,7 @@ class MessagingWebsocketServer {
     close() {
         this.logger.info('Shutting down messaging server.')
         Object.values(this.clients).forEach(client => {
-            client.socket.terminate();
+            client.socket.close();
         });
     }
 
@@ -147,16 +150,16 @@ class MessagingWebsocketServer {
             return;
         }
         const { socket } = this.clients[username];
-        this.sendPayloadToSocket(socket, payload);
+        MessagingWebsocketServer.sendPayloadToSocket(socket, payload);
     }
 
     sendPayloadToAll(payload: ServerPayload) {
         Object.values(this.clients).forEach(client => {
-            this.sendPayloadToSocket(client.socket, payload);
+            MessagingWebsocketServer.sendPayloadToSocket(client.socket, payload);
         });
     }
 
-    sendPayloadToSocket(clientSocket: WebSocket, payload: ServerPayload) {
+    static sendPayloadToSocket(clientSocket: WebSocket, payload: ServerPayload) {
         clientSocket.send(JSON.stringify(payload));
     }
 
