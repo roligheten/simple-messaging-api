@@ -129,6 +129,7 @@ class MessagingWebsocketServer {
         const { message, payload_id } = payload;
         if (typeof message !== 'string') {
             this.sendPayloadToUser(username, buildErrorReplyPayload(payload_id, 'malformed_payload'));
+            return;
         }
 
         this.sendPayloadToAll(buildMessageSentPayload(username, message, Date.now()));
