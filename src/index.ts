@@ -15,6 +15,6 @@ process.on('SIGTERM', () => {
     messagingServer.close();
 });
 
-logger.info('Starting HTTP server on port 8081');
+logger.info('Starting HTTP server on port 8080');
 
-server.listen(8081);
+server.listen(8080);
